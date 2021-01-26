@@ -204,11 +204,6 @@ unsigned char***ConvertFlipGrayscale(BMPHEADER* header){
 			}
 		}
 
-	// for (int i = 0; i < length45; i++)
-	// 	for (int j = 0; j < length45; j++)
-	// 		newPixelArray[0][i][j] = 255;
-
-
 
 	//45 degree rotation clockwise
 	int j = length45-header->width;
