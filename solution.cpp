@@ -5,6 +5,8 @@
 #include <fstream>
 #include <cstring>
 #include <cstdint>
+#include <vector>
+#include <cmath>
 
 using namespace std;
 
@@ -158,7 +160,27 @@ Input:			header:	Header of the file to be converted to grayscale and flipped
 Output:			array which contains data for grayscale converted
 and flipped image
 */
-unsigned char***ConvertFlipGrayscale(BMPHEADER* header){
+
+unsigned char***NearestNeighborInterpolation(unsigned char*** myPixelArray, int channel, uint32_t newHeight, uint32_t newWidth){
+	
+	unsigned char ***newPixelArray = new unsigned char**[channel];
+	for (int i = 0; i < channel; i++){
+		newPixelArray[i] = new unsigned char*[newHeight];
+
+		for (int j = 0; j < newHeight; j++)
+			newPixelArray[i][j] = new unsigned char[newWidth];
+	}
+
+	for (int i = 0; i < newHeight; i++){
+			for (int j = 0; j < newWidth; j++)
+				newPixelArray[0][i][j] = myPixelArray[0][i/2][j/2];
+	}
+
+	return newPixelArray;
+
+}
+
+unsigned char***Transform(BMPHEADER* header, int action){
 
 	int channel, tempSwap, gray;
 	//	channel:	Color Depth, 1 for grayscale, 3 for RGB
@@ -174,15 +196,11 @@ unsigned char***ConvertFlipGrayscale(BMPHEADER* header){
 	// 		cout<< pixelArray[i][j] <<endl;
 
 	// New array for storing grayscale converted and flipped image
-	unsigned char ***myPixelArray = new unsigned char**[channel];
+	unsigned char ***newPixelArray = new unsigned char**[channel];
 
-	// Flipping pixel data/color table along the diagonal
-	for (int i = 0; i < channel; i++){
-		myPixelArray[i] = new unsigned char*[header->width];
+	// Array dimension for 45 degree rotation
+	uint32_t length45 = (header->width + header->height - 1);
 
-		for (int j = 0; j < header->width; j++)
-			myPixelArray[i][j] = new unsigned char[header->height];
-	}
 
 	// Grayscale conversion for RGB color image
 	if (channel == 3)
@@ -199,28 +217,106 @@ unsigned char***ConvertFlipGrayscale(BMPHEADER* header){
 			}
 		}
 
+	// Flipping pixel data/color table along the diagonal
+	if(action == 1){
+		for (int i = 0; i < channel; i++){
+			newPixelArray[i] = new unsigned char*[header->width];
 
-	//	Flipping the image
-	for (int i = 0; i < header->height; i++)
-		for (int j = 0; j < header->width; j++)
-			myPixelArray[0][j][i] = pixelArray[0][header->height - i - 1][header->width - j - 1];
+			for (int j = 0; j < header->width; j++)
+				newPixelArray[i][j] = new unsigned char[header->height];
+		}
 
+		//	Flipping the image
+		for (int i = 0; i < header->height; i++)
+			for (int j = 0; j < header->width; j++)
+				newPixelArray[0][j][i] = pixelArray[0][header->height - i - 1][header->width - j - 1];
+
+	}
+
+
+	// 90 degree rotation anticlockwise
+	else if(action == 2){
+		for (int i = 0; i < channel; i++){
+			newPixelArray[i] = new unsigned char*[header->width];
+
+			for (int j = 0; j < header->width; j++)
+				newPixelArray[i][j] = new unsigned char[header->height];
+		}
+
+		for (int i = 0; i < header->height; i++)
+			for (int j = 0; j < header->width; j++){
+						newPixelArray[0][j][-(i- header->height) - 1] = pixelArray[0][i][j];
+			}
+	}
+
+
+	// 45 degree rotation anticlockwise
+	else if(action == 3){
+		
+		for (int i = 0; i < channel; i++){
+			newPixelArray[i] = new unsigned char*[length45];
+
+			for (int j = 0; j < length45; j++)
+				newPixelArray[i][j] = new unsigned char[length45];
+		}
+
+		int j = length45-header->width;
+		for (int i = 0; i < header->height; i++){
+			for (int k = 0; k < header->width; k++){
+				newPixelArray[0][i+k][j+k] = pixelArray[0][i][k];
+			}
+			j--;
+		}
+	}
+
+
+	else if(action == 4){
+
+		uint32_t newHeight = header->height*2;
+		uint32_t newWidth = header->width*2;
+
+		for (int i = 0; i < channel; i++){
+			newPixelArray[i] = new unsigned char*[newHeight];
+
+			for (int j = 0; j < newHeight; j++)
+				newPixelArray[i][j] = new unsigned char[newWidth];
+		}
+
+		newPixelArray = NearestNeighborInterpolation(pixelArray, channel, newHeight, newWidth);
+	}
+	
 
 	//	Assigning same value for all channels
 	if (channel == 3){
-		myPixelArray[1] = myPixelArray[0];
-		myPixelArray[2] = myPixelArray[0];
+		newPixelArray[1] = newPixelArray[0];
+		newPixelArray[2] = newPixelArray[0];
 	}
 
 	//	Swapping value of the width and height
-	tempSwap = header->width;
-	header->width = header->height;
-	header->height = tempSwap;
+
+	if(action == 1 || action == 2){
+		tempSwap = header->width;
+		header->width = header->height;
+		header->height = tempSwap;
+	}
+
+	else if(action == 3){
+		header->width = length45;
+		header->height = length45;
+	}
+
+	else if(action == 4){
+		header->width = (header->width)*2;
+		header->height = (header->height)*2;
+	}
+	
 
 	header->offset = 1078;
 	header->bpp = 8;
+
 	// Returning the pixel array
-	return myPixelArray;
+	
+	return newPixelArray;
 }
 
 
@@ -300,11 +396,14 @@ int main() {
 
 	string fileName;	// 	Input file name
 	BMPHEADER myHeader;	//	File header
+	int action;
 
 	//	Taking name of the input Bitmap file
 	cout << "Please provide the name of the input file (only Bitmap file) :" << endl;
 	cout << "Example: PeppersRGB" << endl;
 	cin >> fileName;
+	cout << "Please provide the required action integer: 1. Flip Diagonally , 2. Rotate 90 degrees , 3. Rotate 45 degrees , 4. Scale twice" << endl;
+	cin >> action;
 
 
 	//	Location of the image
@@ -313,7 +412,7 @@ int main() {
 	//	Reading File
 	myHeader = ReadBMP(fileName);
 	//	Grayscale conversion and Flipping
-	pixelArray = ConvertFlipGrayscale(&myHeader);
+	pixelArray = Transform(&myHeader, action);
 	//	Writing to the disk
 	WriteBMP("outputImg", myHeader);
 
