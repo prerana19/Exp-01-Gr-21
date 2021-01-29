@@ -161,7 +161,7 @@ Output:			array which contains data for grayscale converted
 and flipped image
 */
 
-unsigned char***NearestNeighborInterpolation(unsigned char*** myPixelArray, int channel, uint32_t newHeight, uint32_t newWidth){
+unsigned char***Scaling(unsigned char*** myPixelArray, int channel, uint32_t newHeight, uint32_t newWidth){
 	
 	unsigned char ***newPixelArray = new unsigned char**[channel];
 	for (int i = 0; i < channel; i++){
@@ -269,7 +269,7 @@ unsigned char***Transform(BMPHEADER* header, int action){
 		}
 	}
 
-
+	//Scaling the given image to twice the dimensions
 	else if(action == 4){
 
 		uint32_t newHeight = header->height*2;
@@ -282,7 +282,7 @@ unsigned char***Transform(BMPHEADER* header, int action){
 				newPixelArray[i][j] = new unsigned char[newWidth];
 		}
 
-		newPixelArray = NearestNeighborInterpolation(pixelArray, channel, newHeight, newWidth);
+		newPixelArray = Scaling(pixelArray, channel, newHeight, newWidth);
 	}
 	
 
