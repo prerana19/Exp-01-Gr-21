@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <vector>
 #include <cmath>
+#include <sstream>
 
 using namespace std;
 
@@ -161,7 +162,7 @@ Output:			array which contains data for grayscale converted
 and flipped image
 */
 
-unsigned char***Scaling(unsigned char*** myPixelArray, int channel, uint32_t newHeight, uint32_t newWidth){
+unsigned char***ScalingTwice(unsigned char*** myPixelArray, int channel, uint32_t newHeight, uint32_t newWidth){
 	
 	unsigned char ***newPixelArray = new unsigned char**[channel];
 	for (int i = 0; i < channel; i++){
@@ -180,7 +181,7 @@ unsigned char***Scaling(unsigned char*** myPixelArray, int channel, uint32_t new
 
 }
 
-unsigned char***Transform(BMPHEADER* header, int action){
+unsigned char***TransformBMP(BMPHEADER* header, int action){
 
 	int channel, tempSwap, gray;
 	//	channel:	Color Depth, 1 for grayscale, 3 for RGB
@@ -217,8 +218,19 @@ unsigned char***Transform(BMPHEADER* header, int action){
 			}
 		}
 
+	//Gray Scaled image
+
+	if(action == 0){
+		header->offset = 1078;
+		header->bpp = 8;
+
+		// Returning the gray scale array
+		
+		return pixelArray;
+	}
+
 	// Flipping pixel data/color table along the diagonal
-	if(action == 1){
+	else if(action == 1){
 		for (int i = 0; i < channel; i++){
 			newPixelArray[i] = new unsigned char*[header->width];
 
@@ -267,9 +279,21 @@ unsigned char***Transform(BMPHEADER* header, int action){
 			}
 			j--;
 		}
+		int m = header->height-1;
+		for(int i = 1 ; i < header->height ; i++){
+			int k = 0;
+			for(int j = m; j < header->width + m -1 ; j++){
+					newPixelArray[0][i+k][j] = newPixelArray[0][i+k-1][j];
+				k++;
+			}
+			m--;
+		}
+
+		
+
 	}
 
-	//Scaling the given image to twice the dimensions
+
 	else if(action == 4){
 
 		uint32_t newHeight = header->height*2;
@@ -282,7 +306,7 @@ unsigned char***Transform(BMPHEADER* header, int action){
 				newPixelArray[i][j] = new unsigned char[newWidth];
 		}
 
-		newPixelArray = Scaling(pixelArray, channel, newHeight, newWidth);
+		newPixelArray = ScalingTwice(pixelArray, channel, newHeight, newWidth);
 	}
 	
 
@@ -400,21 +424,25 @@ int main() {
 
 	//	Taking name of the input Bitmap file
 	cout << "Please provide the name of the input file (only Bitmap file) :" << endl;
-	cout << "Example: PeppersRGB" << endl;
+	cout << "Example: cameraman" << endl;
 	cin >> fileName;
-	cout << "Please provide the required action integer: 1. Flip Diagonally , 2. Rotate 90 degrees , 3. Rotate 45 degrees , 4. Scale twice" << endl;
+
+
+	cout << "Please provide the required action integer: 0. Gray Scale Only , 1. Flip Diagonally , 2. Rotate 90 degrees , 3. Rotate 45 degrees , 4. Scale twice" << endl;
 	cin >> action;
 
+	string outputFile = "outImg_" + to_string(action) + fileName;
 
 	//	Location of the image
-	fileName = fileName + ".bmp";
+	fileName = "./input_images/" + fileName + ".bmp";
 
 	//	Reading File
 	myHeader = ReadBMP(fileName);
 	//	Grayscale conversion and Flipping
-	pixelArray = Transform(&myHeader, action);
+	pixelArray = TransformBMP(&myHeader, action);
 	//	Writing to the disk
-	WriteBMP("outputImg", myHeader);
+	// string outputFile = "outputImg" + to_string(action) + fileName;
+	WriteBMP(outputFile, myHeader);
 
 	printInfo(myHeader);
 	cout << "Execution Completed" << endl;
