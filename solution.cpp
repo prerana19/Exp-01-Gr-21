@@ -162,25 +162,6 @@ Output:			array which contains data for grayscale converted
 and flipped image
 */
 
-unsigned char***ScalingTwice(unsigned char*** myPixelArray, int channel, uint32_t newHeight, uint32_t newWidth){
-	
-	unsigned char ***newPixelArray = new unsigned char**[channel];
-	for (int i = 0; i < channel; i++){
-		newPixelArray[i] = new unsigned char*[newHeight];
-
-		for (int j = 0; j < newHeight; j++)
-			newPixelArray[i][j] = new unsigned char[newWidth];
-	}
-
-	for (int i = 0; i < newHeight; i++){
-			for (int j = 0; j < newWidth; j++)
-				newPixelArray[0][i][j] = myPixelArray[0][i/2][j/2];
-	}
-
-	return newPixelArray;
-
-}
-
 unsigned char***TransformBMP(BMPHEADER* header, int action){
 
 	int channel, tempSwap, gray;
@@ -293,7 +274,7 @@ unsigned char***TransformBMP(BMPHEADER* header, int action){
 
 	}
 
-
+	//Scaling twice
 	else if(action == 4){
 
 		uint32_t newHeight = header->height*2;
@@ -306,7 +287,10 @@ unsigned char***TransformBMP(BMPHEADER* header, int action){
 				newPixelArray[i][j] = new unsigned char[newWidth];
 		}
 
-		newPixelArray = ScalingTwice(pixelArray, channel, newHeight, newWidth);
+		for (int i = 0; i < newHeight; i++){
+			for (int j = 0; j < newWidth; j++)
+				newPixelArray[0][i][j] = pixelArray[0][i/2][j/2];
+		}
 	}
 	
 
